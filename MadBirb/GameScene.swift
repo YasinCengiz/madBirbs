@@ -9,81 +9,230 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    private var label : SKLabelNode?
-    private var spinnyNode : SKShapeNode?
+    var gameStarted = false
+    var originalPosition : CGPoint?
+    
+    var score = 0
+    var scoreLabel = SKLabelNode()
+    
+    var bird = SKSpriteNode()
+    var bird2 = SKSpriteNode()
+    
+    var smallMonster = SKSpriteNode()
+    var mediumMonster = SKSpriteNode()
+    var bigMonster = SKSpriteNode()
+    
+    enum ColliderType: UInt32 {
+        case Bird = 1
+        case Monster = 2
+    }
     
     override func didMove(to view: SKView) {
         
-        // Get label node from scene and store it for use later
-        self.label = self.childNode(withName: "//helloLabel") as? SKLabelNode
-        if let label = self.label {
-            label.alpha = 0.0
-            label.run(SKAction.fadeIn(withDuration: 2.0))
-        }
+        // Physics Body
+        self.physicsBody = SKPhysicsBody(edgeLoopFrom: frame)
+        self.scene?.scaleMode = .aspectFit
+        self.physicsWorld.contactDelegate = self
         
-        // Create shape node to use during mouse interaction
-        let w = (self.size.width + self.size.height) * 0.05
-        self.spinnyNode = SKShapeNode.init(rectOf: CGSize.init(width: w, height: w), cornerRadius: w * 0.3)
+        // Birds
         
-        if let spinnyNode = self.spinnyNode {
-            spinnyNode.lineWidth = 2.5
+        let birdTexture = SKTexture(imageNamed: "bird")
+        bird = childNode(withName: "bird") as! SKSpriteNode
+        
+        bird.physicsBody = SKPhysicsBody(circleOfRadius: birdTexture.size().height / 20)
+        bird.physicsBody?.affectedByGravity = false
+        bird.physicsBody?.isDynamic = true
+        bird.physicsBody?.mass = 0.15
+        originalPosition = bird.position
+        
+        bird.physicsBody?.contactTestBitMask = ColliderType.Bird.rawValue
+        bird.physicsBody?.categoryBitMask = ColliderType.Bird.rawValue
+        bird.physicsBody?.collisionBitMask = ColliderType.Monster.rawValue
+        
+        
+        let bird2Texture = SKTexture(imageNamed: "bird")
+        bird2 = SKSpriteNode(texture: bird2Texture)
+        bird2.position = CGPoint(x: -535.217, y: -0.001)
+        bird2.size = CGSize(width: self.frame.width / 12 , height: self.frame.height / 10)
+        bird2.zPosition = 1
+        self.addChild(bird2)
+        
+        // Monsters
+
+        let monsterTexture = SKTexture(imageNamed: "monster")
+        let smallMediumSize = CGSize(width: monsterTexture.size().width / 15, height: monsterTexture.size().height / 12)
+        let bigSize = CGSize(width: monsterTexture.size().width / 6, height: monsterTexture.size().height / 6)
+        
+        smallMonster = childNode(withName: "smallMonster") as! SKSpriteNode
+        smallMonster.physicsBody = SKPhysicsBody(rectangleOf: smallMediumSize)
+        smallMonster.physicsBody?.affectedByGravity = true
+        smallMonster.physicsBody?.isDynamic = true
+        smallMonster.physicsBody?.allowsRotation = true
+        smallMonster.physicsBody?.mass = 0.1
+        
+        smallMonster.physicsBody?.collisionBitMask = ColliderType.Bird.rawValue
+        
+        mediumMonster = childNode(withName: "mediumMonster") as! SKSpriteNode
+        mediumMonster.physicsBody = SKPhysicsBody(rectangleOf: smallMediumSize)
+        mediumMonster.physicsBody?.affectedByGravity = true
+        mediumMonster.physicsBody?.isDynamic = true
+        mediumMonster.physicsBody?.allowsRotation = true
+        mediumMonster.physicsBody?.mass = 0.1
+        
+        mediumMonster.physicsBody?.collisionBitMask = ColliderType.Bird.rawValue
+        
+        bigMonster = childNode(withName: "bigMonster") as! SKSpriteNode
+        bigMonster.physicsBody = SKPhysicsBody(rectangleOf: bigSize)
+        bigMonster.physicsBody?.affectedByGravity = true
+        bigMonster.physicsBody?.isDynamic = true
+        bigMonster.physicsBody?.allowsRotation = true
+        bigMonster.physicsBody?.mass = 0.1
+        
+        bigMonster.physicsBody?.collisionBitMask = ColliderType.Bird.rawValue
+        
+        scoreLabel.fontName = "Helvetica"
+        scoreLabel.fontSize = 60
+        scoreLabel.text = "0"
+        scoreLabel.position = CGPoint(x: 0, y: self.frame.height / 2.7)
+        scoreLabel.zPosition = 2
+        self.addChild(scoreLabel)
+        
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        if contact.bodyA.collisionBitMask == ColliderType.Bird.rawValue || contact.bodyB.collisionBitMask == ColliderType.Bird.rawValue {
             
-            spinnyNode.run(SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(Double.pi), duration: 1)))
-            spinnyNode.run(SKAction.sequence([SKAction.wait(forDuration: 0.5),
-                                              SKAction.fadeOut(withDuration: 0.5),
-                                              SKAction.removeFromParent()]))
+            score += 1
+            scoreLabel.text = "\(score)"
+            
         }
+        
     }
     
     
     func touchDown(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.green
-            self.addChild(n)
-        }
+
+        
+        
     }
     
     func touchMoved(toPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.blue
-            self.addChild(n)
-        }
+
+        
+        
     }
     
     func touchUp(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.red
-            self.addChild(n)
-        }
+
+        
+        
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let label = self.label {
-            label.run(SKAction.init(named: "Pulse")!, withKey: "fadeInOut")
+
+        if gameStarted == false {
+            if let touch = touches.first {
+                let touchLocation = touch.location(in: self)
+                let touchNodes = nodes(at: touchLocation)
+                
+                if touchNodes.isEmpty == false {
+                    for node in touchNodes {
+                        if let sprite = node as? SKSpriteNode {
+                            if sprite == bird {
+                                bird.position = touchLocation
+                            }
+                        }
+                    }
+                }
+            }
         }
-        
-        for t in touches { self.touchDown(atPoint: t.location(in: self)) }
+//        bird.physicsBody?.applyImpulse(CGVector(dx: 50, dy: 100))
+//        bird.physicsBody?.affectedByGravity = true
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchMoved(toPoint: t.location(in: self)) }
+        
+        if gameStarted == false {
+            if let touch = touches.first {
+                let touchLocation = touch.location(in: self)
+                let touchNodes = nodes(at: touchLocation)
+                
+                if touchNodes.isEmpty == false {
+                    for node in touchNodes {
+                        if let sprite = node as? SKSpriteNode {
+                            if sprite == bird {
+                                bird.position = touchLocation
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
+        
+        if gameStarted == false {
+            if let touch = touches.first {
+                let touchLocation = touch.location(in: self)
+                let touchNodes = nodes(at: touchLocation)
+                
+                if touchNodes.isEmpty == false {
+                    for node in touchNodes {
+                        if let sprite = node as? SKSpriteNode {
+                            if sprite == bird {
+                                let dx = -(touchLocation.x - originalPosition!.x)
+                                let dy = -(touchLocation.y - originalPosition!.y)
+                                let impulse = CGVector(dx: dx, dy: dy)
+                                
+                                bird.physicsBody?.applyImpulse(impulse)
+                                bird.physicsBody?.affectedByGravity = true
+                                gameStarted = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        
     }
     
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
+        
     }
     
     
     override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
+        
+        if let birdPhysicsBody = bird.physicsBody {
+            if birdPhysicsBody.velocity.dx <= 0.1,
+                birdPhysicsBody.velocity.dy <= 0.1,
+                birdPhysicsBody.angularVelocity <= 0.1, gameStarted == true {
+                
+                bird.physicsBody?.affectedByGravity = false
+                bird.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
+                bird.physicsBody?.angularVelocity = 0
+                bird.zPosition = 1
+                bird.position = originalPosition!
+                
+                score = 0
+                scoreLabel.text = "\(score)"
+                
+                gameStarted = false
+                
+            }
+        }
+        
     }
+    
+    
+    
+    
+    
 }
